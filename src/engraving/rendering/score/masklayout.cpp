@@ -360,24 +360,29 @@ void MaskLayout::maskTABStringLinesForFrets(StaffLines* staffLines, const Layout
     staffLines->mutldata()->setMask(mask);
 }
 
-void MaskLayout::computeTieMasksForTimeKeySigs(LayoutContext &ctx, const System* system) {
+void MaskLayout::computeTieMasksForTimeKeySigs(LayoutContext &ctx, const System* system)
+{
     TRACEFUNC;
 
     // collect all time and key signatures in system
     std::vector<EngravingItem*> timeKeySigs;
     for (MeasureBase* mb : system->measures()) {
-        if (!mb->isMeasure())
+        if (!mb->isMeasure()) {
             continue;
+        }
         Measure* measure = toMeasure(mb);
         for (staff_idx_t staffIdx = 0; staffIdx < ctx.dom().nstaves(); ++staffIdx) {
-            if (!system->staff(staffIdx)->show())
+            if (!system->staff(staffIdx)->show()) {
                 continue;
+            }
             for (const Segment& seg : measure->segments()) {
                 EngravingItem* item = seg.element(staff2track(staffIdx));
-                if (!item || !item->visible())
+                if (!item || !item->visible()) {
                     continue;
-                if (seg.isTimeSigType() || seg.isKeySigType())
+                }
+                if (seg.isTimeSigType() || seg.isKeySigType()) {
                     timeKeySigs.push_back(toTimeSig(item));
+                }
             }
         }
     }
