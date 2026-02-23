@@ -381,7 +381,7 @@ void MaskLayout::computeTieMasksForTimeKeySigs(LayoutContext& ctx, const System*
                     continue;
                 }
                 if (seg.isTimeSigType() || seg.isKeySigType()) {
-                    timeKeySigs.push_back(toTimeSig(item));
+                    timeKeySigs.push_back(item);
                 }
             }
         }
