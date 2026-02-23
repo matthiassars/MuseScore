@@ -360,7 +360,7 @@ void MaskLayout::maskTABStringLinesForFrets(StaffLines* staffLines, const Layout
     staffLines->mutldata()->setMask(mask);
 }
 
-void MaskLayout::computeTieMasksForTimeKeySigs(LayoutContext &ctx, const System* system)
+void MaskLayout::computeTieMasksForTimeKeySigs(LayoutContext& ctx, const System* system)
 {
     TRACEFUNC;
 
@@ -416,8 +416,9 @@ void MaskLayout::computeTieMasksForTimeKeySigs(LayoutContext &ctx, const System*
             Shape filteredSigShape;
             filteredSigShape.elements().reserve(sigShape.elements().size());
             for (const ShapeElement& el : sigShape.elements()) {
-                if (tieShape.intersects(el.padded(collisionPadding)))
+                if (tieShape.intersects(el.padded(collisionPadding))) {
                     filteredSigShape.add(el);
+                }
             }
 
             if (filteredSigShape.empty()) {
