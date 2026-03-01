@@ -48,6 +48,6 @@ private:
 
     static void maskTABStringLinesForFrets(StaffLines* staffLines, const LayoutContext& ctx);
 
-    static void computeTieMasksForTimeKeySigs(LayoutContext& ctx, const System* system);
+    static void computeTieMasks(const System* system, LayoutContext& ctx);
 };
 } // namespace mu::engraving::rendering::score
