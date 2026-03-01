@@ -365,7 +365,7 @@ void MaskLayout::computeTieMasks(const System* system, LayoutContext& ctx)
     TRACEFUNC;
 
     const double maskPadding = .1 * system->spatium();
-    const double minFragmentLengh = .25 * system->spatium();
+    const double minFragmentLength = .25 * system->spatium();
 
     // loop over all tie segments in system
     for (SpannerSegment* spannerSeg : system->spannerSegments()) {
@@ -436,7 +436,7 @@ void MaskLayout::computeTieMasks(const System* system, LayoutContext& ctx)
         mask.pad(maskPadding);
         mask.translate(-tiePos);
         tieSegShape.translate(-tiePos);
-        cleanupMask(tieSegShape, mask, minFragmentLengh);
+        cleanupMask(tieSegShape, mask, minFragmentLength);
         spannerSeg->mutldata()->setMask(mask);
     }
 }
