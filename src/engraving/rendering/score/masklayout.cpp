@@ -37,6 +37,9 @@
 #include "dom/system.h"
 #include "dom/page.h"
 #include "dom/textlinebase.h"
+#include "dom/tie.h"
+#include "dom/timesig.h"
+#include "dom/keysig.h"
 
 using namespace mu::engraving;
 using namespace mu::engraving::rendering::score;
@@ -77,6 +80,8 @@ void MaskLayout::computeMasks(LayoutContext& ctx, Page* page)
                 }
             }
         }
+
+        computeTieMasks(system, ctx);
     }
 }
 
@@ -283,7 +288,7 @@ void MaskLayout::maskTABStringLinesForFrets(StaffLines* staffLines, const Layout
 
     Shape mask;
 
-    auto maskFret = [&mask, linesThrough, padding, staffLinesPos] (Chord* chord) {
+    auto maskFret = [&mask, linesThrough, padding, staffLinesPos](Chord* chord) {
         for (Note* note : chord->notes()) {
             if (!note->visible()) {
                 continue;
@@ -298,7 +303,7 @@ void MaskLayout::maskTABStringLinesForFrets(StaffLines* staffLines, const Layout
         }
     };
 
-    auto maskParens = [&mask, linesThrough, padding, staffLinesPos] (Chord* chord) {
+    auto maskParens = [&mask, linesThrough, padding, staffLinesPos](Chord* chord) {
         if (linesThrough) {
             return;
         }
@@ -353,4 +358,85 @@ void MaskLayout::maskTABStringLinesForFrets(StaffLines* staffLines, const Layout
     }
 
     staffLines->mutldata()->setMask(mask);
+}
+
+void MaskLayout::computeTieMasks(const System* system, LayoutContext& ctx)
+{
+    TRACEFUNC;
+
+    const double maskPadding = .1 * system->spatium();
+    const double minFragmentLength = .25 * system->spatium();
+
+    // loop over all tie segments in system
+    for (SpannerSegment* spannerSeg : system->spannerSegments()) {
+        if (!spannerSeg || !spannerSeg->isTieSegment() || !spannerSeg->visible()) {
+            continue;
+        }
+
+        TieSegment* tieSeg = toTieSegment(spannerSeg);
+        PointF tiePos = tieSeg->pagePos();
+        Shape tieSegShape = tieSeg->shape().translated(tiePos);
+        Note* startNote = tieSeg->tie()->startNote();
+        Note* endNote = tieSeg->tie()->endNote();
+        if (!startNote || !endNote) {
+            continue;
+        }
+        Chord* startCh = startNote->chord();
+        Chord* endCh = endNote->chord();
+        Measure* startMeasure = startCh->measure();
+        Measure* endMeasure = endCh->measure();
+        staff_idx_t topStaffIdx = std::min(startCh->vStaffIdx(), endCh->vStaffIdx());
+        staff_idx_t bottomStaffIdx = std::max(startCh->vStaffIdx(), endCh->vStaffIdx());
+
+        Shape mask;
+
+        endMeasure = endMeasure->nextMeasure();
+        for (Measure* m = startMeasure; m && m != endMeasure; m = m->nextMeasure()) {
+            if (m->system() != system) {
+                continue;
+            }
+
+            for (const Segment& seg : m->segments()) {
+                // loop over staves (this could be > 1 in case of staff crossing)
+                for (staff_idx_t staffIdx = topStaffIdx; staffIdx <= bottomStaffIdx; staffIdx++) {
+                    if (!ctx.dom().staff(staffIdx)
+                        || !ctx.dom().staff(staffIdx)->show()
+                        || !m->visible(staffIdx)) {
+                        continue;
+                    }
+
+                    EngravingItem* item = seg.element(staff2track(staffIdx));
+                    if (!item || !item->visible()
+                        || !(seg.isTimeSigType()
+                             || seg.isKeySigType()
+                             || seg.isClefType())) {
+                        continue;
+                    }
+
+                    PointF itemPos = item->pagePos();
+                    Shape itemShape = item->ldata()->shape().translated(itemPos);
+                    for (const ShapeElement& el : itemShape.elements()) {
+                        if (tieSegShape.intersects(el)) {
+                            // add a rectangle to the mask as wide as the intersecting
+                            // element, but as tall as the tie's bounding box, to avoid
+                            // corner cutouts
+                            mask.add(RectF(el.x(), tieSegShape.bbox().y(),
+                                           el.width(), tieSegShape.bbox().height()));
+                        }
+                    }
+                }
+            }
+        }
+
+        if (mask.empty()) {
+            spannerSeg->mutldata()->setMask(mask);
+            continue;
+        }
+
+        mask.pad(maskPadding);
+        mask.translate(-tiePos);
+        tieSegShape.translate(-tiePos);
+        cleanupMask(tieSegShape, mask, minFragmentLength);
+        spannerSeg->mutldata()->setMask(mask);
+    }
 }
